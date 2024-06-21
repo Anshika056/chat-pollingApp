@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Real-Time Polling App</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: #f4f4f9;
+      color: #333;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    #container {
+      background: #fff;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+      overflow: hidden;
+      width: 80%;
+      max-width: 800px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    h2 {
+      margin-top: 0;
+    }
+
+    #registration,
+    #poll,
+    #chat {
+      margin-bottom: 20px;
+    }
+
+    input[type="text"] {
+      width: calc(100% - 22px);
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+
+    input[type="password"] {
+      width: calc(100% - 22px);
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+
+    button {
+      background-color: #007bff;
+      color: #fff;
+      border: none;
+      padding: 10px 15px;
+      font-size: 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 5px;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    #poll button {
+      width: 30%;
+      margin-bottom: 10px;
+    }
+
+    #results {
+      margin-top: 20px;
+    }
+
+    #results p {
+      margin: 5px 0;
+    }
+
+    #chat {
+      background-color: #f0f0f0;
+      padding: 10px;
+      border-radius: 8px;
+    }
+
+    #messages {
+      height: 300px;
+      overflow-y: auto;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+
+    .message-container {
+      display: flex;
+      justify-content: flex-start;
+      margin-bottom: 10px;
+    }
+
+    .message {
+      background-color: #fff;
+      padding: 10px;
+      border-radius: 10px;
+      max-width: 70%;
+      word-wrap: break-word;
+    }
+
+    .message.user {
+      background-color: #007bff;
+      color: #fff;
+      margin-left: auto;
+      text-align: right;
+    }
+
+    .message.other {
+      background-color: #e9e9eb;
+      margin-right: auto;
+      text-align: left;
+    }
+
+    .system-message {
+      text-align: center;
+      color: #999;
+      font-style: italic;
+      margin: 10px 0;
+      animation: fadeInOut 5s forwards;
+    }
+
+    @keyframes fadeInOut {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0;
+      }
+    }
+
+    .typing-indicator {
+      font-style: italic;
+      color: #999;
+      padding-left: 10px;
+    }
+
+    @media (max-width: 600px) {
+      button {
+        width: 100%;
+        margin-top: 10px;
+      }
+
+      #poll button {
+        width: 100%;
+      }
+
+      .message {
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <div id="registration">
+      <input id="usernameInput" type="text" placeholder="Enter your username">
+      <input id="passwordInput" type="password" placeholder="Enter your password">
+      <button onclick="register()">Register</button>
+    </div>
+    <div id="poll" style="display:none;">
+      <h2>Vote For your Favorite programming language </h2>
+      <button onclick="vote('Java')">Java</button>
+      <button onclick="vote('Javascript')">Javascript</button>
+      <button onclick="vote('Python')">Python</button>
+      <div id="results">
+        <h3>Results:</h3>
+        <p>Java: <span id="Java">0</span></p>
+        <p>Javascript: <span id="Javascript">0</span></p>
+        <p>Python: <span id="Python">0</span></p>
+      </div>
+    </div>
+    <div id="chat" style="display:none;">
+      <h2>Chat</h2>
+      <div id="messages"></div>
+      <input id="messageInput" type="text" placeholder="Type a message..." oninput="notifyTyping()">
+      <button onclick="sendMessage()">Send</button>
+      <div id="typingIndicator" class="typing-indicator"></div>
+    </div>
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    let username = '';
+
+    function register() {
+      username = document.getElementById('usernameInput').value;
+      password = document.getElementById('passwordInput').value;
+      socket.emit('register', username,password);
+    }
+     
+    socket.on('usernameTaken', (username) => {
+      alert('Username ' + username + ' is already taken.');
+    });
+
+    socket.on('registrationSuccess', (username) => {
+      document.getElementById('registration').style.display = 'none';
+      document.getElementById('chat').style.display = 'block';
+      document.getElementById('poll').style.display = 'block';
+      showSystemMessage(username + ' joined the chat');
+    });
+
+    socket.on('pollData', (data) => {
+      document.getElementById('Java').innerText = data.Java;
+      document.getElementById('Javascript').innerText = data.Javascript;
+      document.getElementById('Python').innerText = data.Python;
+    });
+
+    socket.on('chatMessages', (messages) => {
+      const messagesDiv = document.getElementById('messages');
+      const shouldScrollToBottom = messagesDiv.scrollTop + messagesDiv.clientHeight === messagesDiv.scrollHeight;
+
+      messagesDiv.innerHTML = '';
+      messages.forEach((msg) => {
+        appendMessage(msg);
+      });
+
+      if (shouldScrollToBottom) {
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      }
+    });
+
+    socket.on('userJoined', (username) => {
+      showSystemMessage(username + ' joined the chat');
+    });
+
+    socket.on('userLeft', (username) => {
+      showSystemMessage(username + ' left the chat');
+    });
+
+    socket.on('typing', (isTyping) => {
+      const typingIndicator = document.getElementById('typingIndicator');
+      typingIndicator.textContent = isTyping ? 'Someone is typing...' : '';
+    });
+
+    function vote(option) {
+      socket.emit('vote', option);
+    }
+
+    function sendMessage() {
+      const input = document.getElementById('messageInput');
+      const message = input.value;
+      socket.emit('chatMessage', { username, message });
+      input.value = '';
+      socket.emit('typing', false);
+    }
+
+    function notifyTyping() {
+      socket.emit('typing', true);
+      setTimeout(() => socket.emit('typing', false), 1000);
+    }
+
+    function showSystemMessage(message) {
+      const messagesDiv = document.getElementById('messages');
+      const p = document.createElement('p');
+      p.className = 'system-message';
+      p.textContent = message;
+      messagesDiv.appendChild(p);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    function appendMessage(msg) {
+      const messagesDiv = document.getElementById('messages');
+      const messageContainer = document.createElement('div');
+      messageContainer.className = 'message-container';
+
+      const p = document.createElement('p');
+      p.className = msg.username === username ? 'message user' : 'message other';
+      p.textContent = msg.username + ': ' + msg.message;
+
+      messageContainer.appendChild(p);
+      messagesDiv.appendChild(messageContainer);
+    }
+  </script>
+</body>
+</html>
