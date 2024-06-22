@@ -6,6 +6,7 @@ const { connectDB } = require("./data");
 const { register } = require("./auth");
 const { vote, getOverallVoteCounts } = require("./poll");
 const poll = require("./models/Poll");
+require('dotenv').config();
 // Connect to MongoDB
 connectDB();
 

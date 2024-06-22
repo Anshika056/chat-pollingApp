@@ -2,10 +2,13 @@ const mongoose = require('mongoose');
 const User = require('./models/User');
 const Message = require('./models/Message');
 const Poll = require('./models/Poll');
+require('dotenv').config({ path: '../.env' });
 
+const MONGO_URI = process.env.MONGO_CONNECTION_STRING;
+console.log('MONGO_URI:', process.env.MONGO_URI);
 const connectDB = async () => {
   try {
-    await mongoose.connect('mongodb://127.0.0.1:27017/polling', {
+    await mongoose.connect(MONGO_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
       //useCreateIndex: true,
